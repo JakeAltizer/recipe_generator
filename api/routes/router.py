@@ -2,9 +2,11 @@ from sqlalchemy.orm import Session
 from fastapi import APIRouter, HTTPException, Depends
 
 from models.ingredient import Ingredient
+from models.user import User
 from databases.database import SessionLocal
 
 from services import ingredients
+from services import users
 
 router = APIRouter()
 
@@ -18,6 +20,10 @@ def get_db():
 @router.get("/")
 async def root():
     return {"message": "Hello! Add ingredients here!"}
+
+@router.post("/register/")
+async def register(user: User, db: Session = Depends(get_db)):
+    return users.create_account(user, db)
 
 @router.post("/ingredients/")
 async def add_ingredient(ingredient: Ingredient, db: Session = Depends(get_db)):

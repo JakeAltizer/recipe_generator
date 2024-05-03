@@ -1,4 +1,5 @@
 from datetime import datetime
+from fastapi import Response
 
 from models.user import User, UserLogin
 from security.sessions import create_user_session
@@ -22,7 +23,7 @@ def create_account(user: User, db: Session):
     db.refresh(db_user)
     return {"message": "User account created"}
 
-def login(credentials: UserLogin, db: Session):
+def login(credentials: UserLogin, response: Response, db: Session):
     user = db.query(DBUser).filter(and_(DBUser.password == credentials.password, 
                                     or_(DBUser.username == credentials.username, 
                                     DBUser.email == credentials.username))).first()
@@ -30,5 +31,7 @@ def login(credentials: UserLogin, db: Session):
         return {"message": "Incorrect username or password"}
     
     session_token = create_user_session(user, db)
+
+    response.set_cookie("session-token", session_token)
 
     return {"message": "Successfully logged in!", "session": session_token}

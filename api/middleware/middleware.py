@@ -1,4 +1,7 @@
 from functools import wraps
+from datetime import datetime
+
+from sqlalchemy import and_
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, Request
 
@@ -15,11 +18,13 @@ def get_db():
 
 def get_current_user(session_token: str):
     db = SessionLocal()
-    current_user = db.query(DBSession).filter(DBSession.token == session_token).first()
+    current_user = db.query(DBSession).filter(and_(DBSession.token == session_token, 
+                                              DBSession.expiration > datetime.now())).first()
     db.close()
 
     if not current_user:
-        raise HTTPException(status_code=401, detail="Login session expired. Please login again to continue.")
+        raise HTTPException(status_code=401, 
+                            detail="Login session expired. Please login again to continue.")
     return current_user
 
 
@@ -30,7 +35,7 @@ def authenticate(handler):
     """
     @wraps(handler)
     async def wrapper(request: Request, *args, **kwargs):
-        session_token = request.headers.get("session-token")
+        session_token = request.cookies.get("session-token")
         current_user = get_current_user(session_token)
         return await handler(request, *args, **kwargs)
     return wrapper

@@ -1,14 +1,13 @@
 from sqlalchemy.orm import Session
-from fastapi import APIRouter, HTTPException, Depends, Request, Response
+from fastapi import APIRouter, HTTPException, Depends, Request, Response, Body
 
-from models.ingredient import Ingredient
+from models.ingredient import Ingredient, IngredientSearch
 from models.user import User, UserLogin
 from databases.database import SessionLocal
 
 from middleware.middleware import authenticate, get_db
 
-from services import ingredients
-from services import users
+from services import users, ingredients, recipes
 
 router = APIRouter()
 
@@ -28,3 +27,8 @@ async def login(credentials: UserLogin, response: Response, db: Session = Depend
 @authenticate
 async def add_ingredient(request: Request, ingredient: Ingredient, db: Session = Depends(get_db)):
     return ingredients.add_ingredient(db, ingredient)
+
+@router.get("/recipes/search/")
+@authenticate
+async def search_recipes(request: Request, ingredients: IngredientSearch):
+    return recipes.recipes_by_ingredients(ingredients)

@@ -1,3 +1,4 @@
+from typing import List
 from pydantic import BaseModel
 
 class Ingredient(BaseModel):
@@ -6,3 +7,7 @@ class Ingredient(BaseModel):
     amount: float
     unit: str
     storage: str
+
+class IngredientSearch(BaseModel):
+    ingredients: List[str]
+    num_results: int = 1

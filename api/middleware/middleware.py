@@ -1,7 +1,6 @@
 from functools import wraps
 from datetime import datetime
 
-from sqlalchemy import and_
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, Request
 
@@ -16,10 +15,19 @@ def get_db():
     finally:
         db.close()
 
-def get_current_user(session_token: str):
+def get_session_token(request: Request):
+    session_token = request.cookies.get("session-token")
+    if not session_token:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session_token
+
+def get_current_user(request: Request):
+    session_token = get_session_token(request)
     db = SessionLocal()
-    current_user = db.query(DBSession).filter(and_(DBSession.token == session_token, 
-                                              DBSession.expiration > datetime.now())).first()
+
+    current_user = db.query(DBUser).filter(DBUser.id == DBSession.user_id,
+                                           DBSession.token == session_token,
+                                           DBSession.expiration > datetime.now()).first()
     db.close()
 
     if not current_user:
@@ -35,7 +43,7 @@ def authenticate(handler):
     """
     @wraps(handler)
     async def wrapper(request: Request, *args, **kwargs):
-        session_token = request.cookies.get("session-token")
-        current_user = get_current_user(session_token)
+        session_token = get_session_token(request)
+        current_user = get_current_user(request)
         return await handler(request, *args, **kwargs)
     return wrapper

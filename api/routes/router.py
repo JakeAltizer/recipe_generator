@@ -26,7 +26,7 @@ async def login(credentials: UserLogin, response: Response, db: Session = Depend
 @router.post("/ingredients/")
 @authenticate
 async def add_ingredient(request: Request, ingredient: Ingredient, db: Session = Depends(get_db)):
-    return ingredients.add_ingredient(db, ingredient)
+    return ingredients.add_ingredient(ingredient, request, db)
 
 @router.get("/recipes/search/")
 @authenticate

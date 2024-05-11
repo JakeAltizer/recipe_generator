@@ -32,3 +32,9 @@ async def add_ingredient(request: Request, ingredient: Ingredient, db: Session =
 @authenticate
 async def search_recipes(request: Request, ingredients: IngredientSearch):
     return recipes.recipes_by_ingredients(ingredients)
+
+@router.get("/recipes/details/")
+@authenticate
+async def get_recipe(request: Request):
+    request_json = await request.json()
+    return recipes.get_recipe_details(request_json)

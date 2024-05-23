@@ -1,52 +1,48 @@
-import os
-import requests
+from typing import List
+from datetime import datetime
 
-from fastapi import Request, HTTPException
+from sqlalchemy.orm import Session
+from fastapi import HTTPException
 
-api_url = 'https://api.spoonacular.com/recipes/'
+from databases.db_recipe import DBRecipe
+from models.recipe import Recipe
+from services.ingredients import process_ingredients
 
-def recipes_by_ingredients(ingredients):
-    api_key = "?apiKey=" + os.environ['SPOONACULAR_API_KEY']
+def process_instructions(instructions_list: List):
+    processed_instructions = []
+    for step, instruction in enumerate(instructions_list, start=1):
+        processed_instructions.append({"step":step, "instruction":instruction})
+    return processed_instructions
 
-    url = api_url + "findByIngredients" + api_key
+def add_new_recipe(recipe: Recipe, db: Session):
+    total_time_minutes = recipe.prep_time_minutes + recipe.cook_time_minutes
+    
+    # process recipe ingredients
+    ingredients_dict = process_ingredients(recipe.ingredients)
 
-    num_results = ingredients.num_results
-    ignore_pantry = False
-    ranking = 1
+    # process recipe instructions
+    instructions_dict = process_instructions(recipe.instructions)
 
-    params = {"ingredients": ingredients.ingredients,
-              "number": num_results,
-              "ignorePantry": ignore_pantry,
-              "ranking": ranking}
+    # check if name and credits exist already
+    existing_recipe = db.query(DBRecipe).filter(
+        DBRecipe.name == recipe.name,
+        DBRecipe.credits == recipe.credits).first()
 
-    try:
-        response = requests.get(url, params=params).json()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Error: could not find recipe")
+    if existing_recipe:
+        raise HTTPException(status_code=404, 
+                            detail="Recipe: " + recipe.name + "by: " + str(recipe.credits) + " already exists.")
 
-    if isinstance(response, list):
-        if not len(response):
-            raise HTTPException(status_code=404, detail="Error: no results found for search terms")
-    return {"message": "Results found", "results":response}
+    # Add recipe to the database
+    created_at = datetime.now()
+    updated_at = created_at
+    db_recipe = DBRecipe(name=recipe.name, prep_time_minutes=recipe.prep_time_minutes,
+                         cook_time_minutes=recipe.cook_time_minutes, total_time_minutes=total_time_minutes,
+                         num_servings=recipe.num_servings, ingredients=ingredients_dict,
+                         instructions=instructions_dict, summary=recipe.summary,
+                         credits=recipe.credits, created_at=created_at, updated_at=updated_at)
 
-def get_recipe_details(request):
-    recipe_id = request.get('recipe_id')
+    db.add(db_recipe)
+    db.commit()
+    db.refresh(db_recipe)
 
-    api_key = "?apiKey=" + os.environ['SPOONACULAR_API_KEY']
-
-    url = api_url + str(recipe_id) + "/analyzedInstructions" + api_key 
-
-    step_breakdown = True
-
-    params = {"stepBreakdown": step_breakdown}
-
-    try:
-        response = requests.get(url, params=params).json()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Error: could not get recipe information at this time.")
-
-    if isinstance(response, list):
-        if not len(response):
-            raise HTTPException(status_code=404, detail="Error: details not found for recipe.")
-
-    return {"message": "Recipe details successfully retrieved", "results":response}
+    return {"message": "Recipe added!"}

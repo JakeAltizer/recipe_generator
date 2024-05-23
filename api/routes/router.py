@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
-from fastapi import APIRouter, HTTPException, Depends, Request, Response, Body
+from fastapi import APIRouter, Depends, Request, Response
 
 from models.ingredient import Ingredient, IngredientSearch
 from models.user import User, UserLogin
-from databases.database import SessionLocal
+from models.recipe import Recipe
 
 from middleware.middleware import authenticate, get_db
 
@@ -28,13 +28,7 @@ async def login(credentials: UserLogin, response: Response, db: Session = Depend
 async def add_ingredient(request: Request, ingredient: Ingredient, db: Session = Depends(get_db)):
     return ingredients.add_ingredient(ingredient, request, db)
 
-@router.get("/recipes/search/")
+@router.post("/recipes/add/")
 @authenticate
-async def search_recipes(request: Request, ingredients: IngredientSearch):
-    return recipes.recipes_by_ingredients(ingredients)
-
-@router.get("/recipes/details/")
-@authenticate
-async def get_recipe(request: Request):
-    request_json = await request.json()
-    return recipes.get_recipe_details(request_json)
+async def add_recipe(request: Request, recipe: Recipe, db: Session = Depends(get_db)):
+    return recipes.add_new_recipe(recipe, db)
